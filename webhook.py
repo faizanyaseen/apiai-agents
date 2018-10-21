@@ -1,40 +1,49 @@
+from __future__ import print_function
+#from future.standard_library import install_aliases
+#install_aliases()
+
+from urllib.parse import urlparse, urlencode
+from urllib.request import urlopen, Request
+from urllib.error import HTTPError
+
+import json
+import os
+
 from flask import Flask
-from flask_assistant import Assistant, ask, tell
+from flask import request
+from flask import make_response
 
+# Flask app should start in global layout
 app = Flask(__name__)
-assist = Assistant(app, route='/')
 
 
-@assist.action('greeting')
-def greet_and_start():
-    speech = "Hey! Are you male or female?"
-    return ask(speech)
 
 
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    req = request.get_json(silent=True, force=True)
+    reqText=req.get("result").get("resolvedQuery")
+    print(json.dumps(req, indent=4))
+
+    res= {
+        "speech": reqText,
+        "displayText": reqText,
+        # "data": data,
+        # "contextOut": [],
+        "source": "apiai-weather-webhook-sample"
+    }
+
+    res = json.dumps(res, indent=4)
     
-@assist.action("give-gender")
-def ask_for_color(gender):
-    if gender == 'male':
-        gender_msg = 'Sup bro!'
-    else:
-        gender_msg = 'Haay gurl!'
-
-    speech = gender_msg + ' What is your favorite color?'
-    return ask(speech)
-
-
-
-@assist.action('give-color', mapping={'color': 'sys.color'})
-def ask_for_season(color):
-    speech = 'Ok, {} is an okay color I guess'.format(color)
-    return ask(speech)
-
+    r = make_response(res)
+    r.headers['Content-Type'] = 'application/json'
+    return r
 
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
-    
-    
-import logging
-logging.getLogger('flask_assistant').setLevel(logging.DEBUG)
+    port = int(os.getenv('PORT', 5000))
+
+    print("Starting app on port %d" % port)
+
+    app.run(debug=True, port=port, host='0.0.0.0')
